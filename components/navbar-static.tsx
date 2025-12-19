@@ -7,21 +7,37 @@ import { createClient } from "@/lib/supabase/client"
 export function NavbarStatic() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
+  const [supabaseAvailable, setSupabaseAvailable] = useState(false)
 
   useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setUser(user)
-      setLoading(false)
+    const initSupabase = async () => {
+      try {
+        const supabase = createClient()
+        setSupabaseAvailable(true)
+
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+        setUser(user)
+      } catch (error) {
+        console.warn("Supabase not available:", error)
+        setSupabaseAvailable(false)
+      } finally {
+        setLoading(false)
+      }
     }
-    getUser()
+    initSupabase()
   }, [])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    if (supabaseAvailable) {
+      try {
+        const supabase = createClient()
+        await supabase.auth.signOut()
+      } catch (error) {
+        console.warn("Logout failed:", error)
+      }
+    }
     setUser(null)
     window.location.href = "/"
   }
@@ -59,7 +75,7 @@ export function NavbarStatic() {
             <Link href="/cart" className="text-gray-700 hover:text-red-600 transition font-semibold">
               🛒 Cart
             </Link>
-            {!loading && user ? (
+            {supabaseAvailable && !loading && user ? (
               <div className="flex items-center gap-2">
                 <Link
                   href="/protected/profile"
@@ -75,7 +91,7 @@ export function NavbarStatic() {
                   Logout
                 </button>
               </div>
-            ) : (
+            ) : supabaseAvailable ? (
               <div className="flex items-center gap-2">
                 <Link
                   href="/auth/login"
@@ -90,7 +106,7 @@ export function NavbarStatic() {
                   Sign Up
                 </Link>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
